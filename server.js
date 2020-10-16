@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const { pool } = require("./dbConfig");
+const bcrypt = require("bcrypt");
 
 const PORT = process.env.PORT || 4000;
 
@@ -23,7 +24,7 @@ app.get("/users/dashboard", (req, res) => {
     res.render("dashboard", { user: "Axel"});
 });
 
-app.post("/users/register", (req, res) => {
+app.post("/users/register", async (req, res) => {
     let { name, email, password, password2 } = req.body;
     console.log({ name, email, password, password2 });
     
@@ -42,8 +43,23 @@ app.post("/users/register", (req, res) => {
 
     if(errors.length > 0) {
         res.render("register", { errors });
-    }
+    } else {
+        // Form validation passed(bring in bcrypt)
+        let hashedPassword = await bcrypt.hash(password, 10);
+        console.log(hashedPassword);
 
+        pool.query(`SELECT * FROM users WHERE email = $1`, [email], (err, results) => {
+            if (err) {
+                throw err;
+            }
+            console.log(results.rows);
+
+            if (results.rows.length > 0) {
+                errors.push({message: "Email already registered."});
+                res.render("register", { errors })
+            }
+        });
+    }
 });
  
 app.listen(PORT, ()=>{
